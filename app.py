@@ -32,7 +32,7 @@ class MetaDataStudy(Resource):
             print(e)
         return studies
 
-@api.route('/tissues')
+@api.route('/tissue')
 class Tissues(Resource):
     def get(Request):
         try:
