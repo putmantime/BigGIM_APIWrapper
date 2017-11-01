@@ -61,6 +61,37 @@ class SingleStudy(Resource):
         return study_meta
 
 
+@metadata_ns.route('/swagger')
+class MetaDataSwagger(Resource):
+    def get(Request):
+        try:
+            swagger = getBG(endpoint='metadata/swagger', data={}, base_url=base_url)
+        except requests.HTTPError as e:
+            print(e)
+        return swagger
+
+
+@metadata_ns.route('/table')
+class MetaDataTable(Resource):
+    def get(Request):
+        try:
+            table_result = getBG(endpoint='metadata/table', data={}, base_url=base_url)
+        except requests.HTTPError as e:
+            print(e)
+        return table_result
+
+
+@metadata_ns.route('/table/<string:table_name>')
+class SingleTable(Resource):
+    def get(self, table_name):
+        try:
+            endpoint = 'metadata/table/%s' % (table_name)
+            table_meta = getBG(endpoint=endpoint, data={}, base_url=base_url)
+        except requests.HTTPError as e:
+            print(e)
+        return table_meta
+
+
 ##########
 #  /tissue
 ##########
