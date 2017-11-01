@@ -8,7 +8,6 @@ api = Api(app)
 
 # instantiate namespaces
 interactions_ns = api.namespace('interactions', "Queries for interactions")
-tissue_ns = api.namespace('tissue', "Queries for tissue")
 metadata_ns = api.namespace('metadata', 'Queries for study metadata')
 
 base_url = 'http://biggim.ncats.io/api'
@@ -92,11 +91,7 @@ class SingleTable(Resource):
         return table_meta
 
 
-##########
-#  /tissue
-##########
-
-@tissue_ns.route('/')
+@metadata_ns.route('/')
 class Tissues(Resource):
     def get(Request):
         try:
@@ -106,7 +101,7 @@ class Tissues(Resource):
         return studies
 
 
-@tissue_ns.route('/<string:tissue_name>')
+@metadata_ns.route('/<string:tissue_name>')
 class SingleTissue(Resource):
     def get(self, tissue_name):
         try:
