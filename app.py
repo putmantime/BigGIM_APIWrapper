@@ -91,7 +91,7 @@ class SingleTable(Resource):
         return table_meta
 
 
-@metadata_ns.route('/')
+@metadata_ns.route('/tissue')
 class Tissues(Resource):
     def get(Request):
         try:
@@ -101,7 +101,7 @@ class Tissues(Resource):
         return studies
 
 
-@metadata_ns.route('/<string:tissue_name>')
+@metadata_ns.route('/tissue/<string:tissue_name>')
 class SingleTissue(Resource):
     def get(self, tissue_name):
         try:
