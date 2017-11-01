@@ -1,5 +1,5 @@
 from flask import Flask, request
-from flask_restplus import Resource, Api, reqparse
+from flask_restplus import Resource, Api
 import requests
 import time
 
@@ -10,10 +10,10 @@ api = Api(app)
 interactions_ns = api.namespace('interactions', "Queries for interactions")
 tissue_ns = api.namespace('tissue', "Queries for tissue")
 metadata_ns = api.namespace('metadata', 'Queries for study metadata')
-base_url = 'http://biggim.ncats.io/api'
-todos = {}
 
-#a couple of simple helper functions
+base_url = 'http://biggim.ncats.io/api'
+
+# http request methods
 def postBG(endpoint, data={}, base_url=base_url):
     req = requests.post('%s/%s' % (base_url,endpoint), json=data)
     req.raise_for_status()
@@ -25,9 +25,11 @@ def getBG(endpoint, data={}, base_url=base_url):
     req.raise_for_status()
     return req.json()
 
+
 ##########
 #  /metadata
 ##########
+
 @metadata_ns.route('/openapiv3')
 class MetaDataStudy(Resource):
     def get(Request):
@@ -36,6 +38,7 @@ class MetaDataStudy(Resource):
         except requests.HTTPError as e:
             print(e)
         return studies
+
 
 @metadata_ns.route('/study')
 class MetaDataStudy(Resource):
@@ -46,6 +49,7 @@ class MetaDataStudy(Resource):
             print(e)
         return studies
 
+
 @metadata_ns.route('/study/<string:study_name>')
 class SingleStudy(Resource):
     def get(self, study_name):
@@ -55,6 +59,8 @@ class SingleStudy(Resource):
         except requests.HTTPError as e:
             print(e)
         return study_meta
+
+
 ##########
 #  /tissue
 ##########
@@ -78,6 +84,7 @@ class SingleTissue(Resource):
         except requests.HTTPError as e:
             print(e)
         return single_tissue
+
 
 ##########
 #  /interactions
@@ -110,20 +117,17 @@ class SingleTissue(Resource):
 @interactions_ns.param('limit', 'The maximum number of rows to return',
                        default='10000', required=True)
 
-# example query url http://127.0.0.1:5000/interactions/query?columns=TCGA_GBM_Correlation,TCGA_GBM_Pvalue,GTEx_Brain_Correlation,GTEx_Brain_Pvalue&ids1=5111,6996,57697,6815,889,7112,2176,1019,5888,5706,5722,1111,112,3333&ids2=5111,6996,57697,6815,889,7112,2176,1019,5888,5706,3333,1111,112,3333&limit=10000&restriction_gt=TCGA_GBM_Correlation,.2,%20GTEx_Brain_Correlation,.2&restriction_join=union&restriction_lt=TCGA_GBM_Pvalue,.05,%20GTEx_Brain_Pvalue,.01&table=BigGIM_70_v1
-# Currently returns the uri for an interactions table.csv
+# TODO Finalize return; Currently returns the uri for an interactions table.csv
 class GetInteractionsQuery(Resource):
     def post(self):
-        # query_submit = None
         try:
-            query_submit = postBG(endpoint='interactions/query', base_url=base_url, data=dict(request.args))
+            query_submit = postBG(endpoint='interactions/query', base_url=base_url, data=request.args)
         except Exception as e:
             print(e)
         query_status = self.get_query_status(query_key=query_submit['request_id'])
         return query_status['request_uri']
 
     def get(self):
-        # query_submit = None
         try:
             query_submit = getBG('interactions/query', base_url=base_url, data=request.args)
         except Exception as e:
@@ -143,12 +147,12 @@ class GetInteractionsQuery(Resource):
                                      base_url=base_url, data={})
                 if query_status['status'] != 'running':
                     # query has finished
-                    return query_status
+                    break
                 else:
                     time.sleep(1)
         except requests.HTTPError as e:
             print(e)
-
+        return query_status
 
 if __name__ == '__main__':
     app.run(debug=True)
