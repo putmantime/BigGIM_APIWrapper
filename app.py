@@ -6,7 +6,13 @@ import json
 import pandas as pd
 
 app = Flask(__name__)
-api = Api(app)
+
+
+description = """ An NCATS Translator SMARTAPI compliant API wrapper for the 
+BigGIM (Gene Interaction Miner) API http://biggim.ncats.io/api
+"""
+api = Api(app, description=description)
+
 
 # instantiate namespaces
 interactions_ns = api.namespace('interactions', "Mine the interaction profiles of various entities")
@@ -20,10 +26,10 @@ uberon_bto_map = json.loads(open ('bto_uberon_bg.json').read())
 def id2term(var, key, return_key, json_blob):
     """
     check json map of uberbon, bto an bg terms for id
-    :param var:
-    :param key:
-    :param return_key:
-    :param json_blob:
+    :param var: identifier
+    :param key: source of identifier
+    :param return_key: key to return in matched object
+    :param json_blob: json to search
     :return: bg term name if mapping to that id exists, input var if no mapping exists
     """
     result = var
@@ -55,9 +61,11 @@ class MetaDataStudy(Resource):
     def get(Request):
         try:
             studies = getBG(endpoint='metadata/openapiv3', data={}, base_url=base_url)
+            return studies
         except requests.HTTPError as e:
-            print(e)
-        return studies
+            return {
+                'error': str(e)
+            }
 
 
 @metadata_ns.route('/study')
@@ -65,9 +73,11 @@ class MetaDataStudy(Resource):
     def get(Request):
         try:
             studies = getBG(endpoint='metadata/study', data={}, base_url=base_url)
+            return studies
         except requests.HTTPError as e:
-            print(e)
-        return studies
+            return {
+                'error': str(e)
+            }
 
 
 @metadata_ns.route('/study/<string:study_name>')
@@ -76,9 +86,11 @@ class SingleStudy(Resource):
         try:
             endpoint = 'metadata/study/%s' % (study_name)
             study_meta = getBG(endpoint=endpoint, data={}, base_url=base_url)
+            return study_meta
         except requests.HTTPError as e:
-            print(e)
-        return study_meta
+            return {
+                'error': str(e)
+            }
 
 
 @metadata_ns.route('/swagger')
@@ -86,9 +98,11 @@ class MetaDataSwagger(Resource):
     def get(Request):
         try:
             swagger = getBG(endpoint='metadata/swagger', data={}, base_url=base_url)
+            return swagger
         except requests.HTTPError as e:
-            print(e)
-        return swagger
+            return {
+                'error': str(e)
+            }
 
 
 @metadata_ns.route('/table')
@@ -96,9 +110,12 @@ class MetaDataTable(Resource):
     def get(Request):
         try:
             table_result = getBG(endpoint='metadata/table', data={}, base_url=base_url)
+            return table_result
         except requests.HTTPError as e:
-            print(e)
-        return table_result
+            return {
+                'error': str(e)
+            }
+
 
 
 @metadata_ns.route('/table/<string:table_name>')
@@ -107,9 +124,12 @@ class SingleTable(Resource):
         try:
             endpoint = 'metadata/table/%s' % (table_name)
             table_meta = getBG(endpoint=endpoint, data={}, base_url=base_url)
+            return table_meta
         except requests.HTTPError as e:
-            print(e)
-        return table_meta
+            return {
+                'error': str(e)
+            }
+
 
 
 @metadata_ns.route('/tissue')
@@ -117,9 +137,12 @@ class Tissues(Resource):
     def get(Request):
         try:
             studies = getBG(endpoint='metadata/tissue', data={}, base_url=base_url)
+            return studies
         except requests.HTTPError as e:
-            print(e)
-        return studies
+            return {
+                'error': str(e)
+            }
+
 
 
 @metadata_ns.route('/tissue/<string:tissue_name>')
@@ -134,9 +157,13 @@ class SingleTissue(Resource):
         try:
             endpoint = 'metadata/tissue/%s' % (tissue_name)
             single_tissue = getBG(endpoint=endpoint, data={}, base_url=base_url)
+            return single_tissue
         except requests.HTTPError as e:
-            print(e)
-        return single_tissue
+            return {
+                'message': "'{0}' is not a valid tissue name or identifier".format(tissue_name),
+                'error': str(e)
+            }
+
 
 
 ##########
@@ -170,13 +197,15 @@ class SingleTissue(Resource):
 @interactions_ns.param('limit', 'The maximum number of rows to return',
                        default='10000', required=True)
 
-# TODO Finalize return; Currently returns the uri for an interactions table.csv
+
 class GetInteractionsQuery(Resource):
     def post(self):
         try:
             query_submit = postBG(endpoint='interactions/query', base_url=base_url, data=request.args)
         except Exception as e:
-            print(e)
+            return {
+                'error': str(e)
+            }
         query_status = self.get_query_status(query_key=query_submit['request_id'])
         return self.pandas2json(query_status['request_uri'])
 
@@ -184,7 +213,9 @@ class GetInteractionsQuery(Resource):
         try:
             query_submit = getBG('interactions/query', base_url=base_url, data=request.args)
         except Exception as e:
-            print(e)
+            return {
+                'error': str(e)
+            }
         query_status = self.get_query_status(query_key=query_submit['request_id'])
         return self.pandas2json(query_status['request_uri'])
 
@@ -204,7 +235,9 @@ class GetInteractionsQuery(Resource):
                 else:
                     time.sleep(1)
         except requests.HTTPError as e:
-            print(e)
+            return {
+                'error': str(e)
+            }
         return query_status
 
     def pandas2json(self, request_uri):
