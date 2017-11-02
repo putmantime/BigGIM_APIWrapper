@@ -58,6 +58,9 @@ def getBG(endpoint, data={}, base_url=base_url):
 
 @metadata_ns.route('/openapiv3')
 class MetaDataStudy(Resource):
+    """
+    Return the OpenAPI v3 spec for this API
+    """
     def get(Request):
         try:
             studies = getBG(endpoint='metadata/openapiv3', data={}, base_url=base_url)
@@ -70,6 +73,9 @@ class MetaDataStudy(Resource):
 
 @metadata_ns.route('/study')
 class MetaDataStudy(Resource):
+    """
+    Return all available studies
+    """
     def get(Request):
         try:
             studies = getBG(endpoint='metadata/study', data={}, base_url=base_url)
@@ -82,6 +88,9 @@ class MetaDataStudy(Resource):
 
 @metadata_ns.route('/study/<string:study_name>')
 class SingleStudy(Resource):
+    """
+    Return a single study and associated substudies
+    """
     def get(self, study_name):
         try:
             endpoint = 'metadata/study/%s' % (study_name)
@@ -95,6 +104,9 @@ class SingleStudy(Resource):
 
 @metadata_ns.route('/swagger')
 class MetaDataSwagger(Resource):
+    """
+    Return the swagger v2 spec for this API
+    """
     def get(Request):
         try:
             swagger = getBG(endpoint='metadata/swagger', data={}, base_url=base_url)
@@ -107,6 +119,9 @@ class MetaDataSwagger(Resource):
 
 @metadata_ns.route('/table')
 class MetaDataTable(Resource):
+    """
+    Retreive list of avaiable tables
+    """
     def get(Request):
         try:
             table_result = getBG(endpoint='metadata/table', data={}, base_url=base_url)
@@ -120,6 +135,9 @@ class MetaDataTable(Resource):
 
 @metadata_ns.route('/table/<string:table_name>')
 class SingleTable(Resource):
+    """
+    Retrieve metadata about a table
+    """
     def get(self, table_name):
         try:
             endpoint = 'metadata/table/%s' % (table_name)
@@ -131,9 +149,27 @@ class SingleTable(Resource):
             }
 
 
+@metadata_ns.route('/table/<string:table_name>/column/<string:column_name>')
+class SingleColumn(Resource):
+    """
+    Retrieve metadata about a column in a table
+    """
+    def get(self, table_name, column_name):
+        try:
+            endpoint = 'metadata/table/%s/column/%s' % (table_name, column_name)
+            table_meta = getBG(endpoint=endpoint, data={}, base_url=base_url)
+            return table_meta
+        except requests.HTTPError as e:
+            return {
+                'error': str(e)
+            }
+
 
 @metadata_ns.route('/tissue')
 class Tissues(Resource):
+    """
+    Return a list of available tissues (bto terms with underscores)
+    """
     def get(Request):
         try:
             studies = getBG(endpoint='metadata/tissue', data={}, base_url=base_url)
@@ -147,6 +183,9 @@ class Tissues(Resource):
 
 @metadata_ns.route('/tissue/<string:tissue_name>')
 class SingleTissue(Resource):
+    """
+    Return a list of substudies and columns associated with a tissue
+    """
     def get(self, tissue_name):
         # retrieve bg term if bto or uberon as input
         if 'UBERON:' in tissue_name:
