@@ -2,15 +2,35 @@ from flask import Flask, request
 from flask_restplus import Resource, Api
 import requests
 import time
+import json
 
 app = Flask(__name__)
 api = Api(app)
 
 # instantiate namespaces
-interactions_ns = api.namespace('interactions', "Queries for interactions")
-metadata_ns = api.namespace('metadata', 'Queries for study metadata')
+interactions_ns = api.namespace('interactions', "Mine the interaction profiles of various entities")
+metadata_ns = api.namespace('metadata', 'Access the metadata for available datasets')
 
 base_url = 'http://biggim.ncats.io/api'
+
+# map of bto -> uberon -> bg terms
+uberon_bto_map = json.loads(open ('bto_uberon_bg.json').read())
+
+def id2term(var, key, return_key, json_blob):
+    """
+    check json map of uberbon, bto an bg terms for id
+    :param var:
+    :param key:
+    :param return_key:
+    :param json_blob:
+    :return: bg term name if mapping to that id exists, input var if no mapping exists
+    """
+    result = var
+    for obj in json_blob:
+        if obj[key] == var:
+            result = obj[return_key]
+    return result
+
 
 # http request methods
 def postBG(endpoint, data={}, base_url=base_url):
@@ -104,6 +124,13 @@ class Tissues(Resource):
 @metadata_ns.route('/tissue/<string:tissue_name>')
 class SingleTissue(Resource):
     def get(self, tissue_name):
+
+        # retrieve bg term if bto or uberon as input
+        if 'UBERON:' in tissue_name:
+            tissue_name = id2term(var=tissue_name, key='uberon_id', return_key='bg_label', json_blob=uberon_bto_map)
+        if 'BTO:' in tissue_name:
+            tissue_name = id2term(var=tissue_name, key='bto_id', return_key='bg_label', json_blob=uberon_bto_map)
+
         try:
             endpoint = 'metadata/tissue/%s' % (tissue_name)
             single_tissue = getBG(endpoint=endpoint, data={}, base_url=base_url)
