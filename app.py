@@ -3,6 +3,7 @@ from flask_restplus import Resource, Api
 import requests
 import time
 import json
+import pandas as pd
 
 app = Flask(__name__)
 api = Api(app)
@@ -124,7 +125,6 @@ class Tissues(Resource):
 @metadata_ns.route('/tissue/<string:tissue_name>')
 class SingleTissue(Resource):
     def get(self, tissue_name):
-
         # retrieve bg term if bto or uberon as input
         if 'UBERON:' in tissue_name:
             tissue_name = id2term(var=tissue_name, key='uberon_id', return_key='bg_label', json_blob=uberon_bto_map)
@@ -178,7 +178,7 @@ class GetInteractionsQuery(Resource):
         except Exception as e:
             print(e)
         query_status = self.get_query_status(query_key=query_submit['request_id'])
-        return query_status['request_uri']
+        return self.pandas2json(query_status['request_uri'])
 
     def get(self):
         try:
@@ -186,7 +186,7 @@ class GetInteractionsQuery(Resource):
         except Exception as e:
             print(e)
         query_status = self.get_query_status(query_key=query_submit['request_id'])
-        return query_status['request_uri']
+        return self.pandas2json(query_status['request_uri'])
 
     def get_query_status(self, query_key):
         """
@@ -206,6 +206,12 @@ class GetInteractionsQuery(Resource):
         except requests.HTTPError as e:
             print(e)
         return query_status
+
+    def pandas2json(self, request_uri):
+        # use pandas to get csv with request uri and serialize into json for return
+        pd_df = pd.read_csv(request_uri[0])
+        raw_json = pd_df.to_json(orient='records')
+        return json.loads(raw_json)
 
 if __name__ == '__main__':
     app.run(debug=True)
