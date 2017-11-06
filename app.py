@@ -4,6 +4,7 @@ import requests
 import time
 import json
 import pandas as pd
+from pprint import pprint
 
 app = Flask(__name__)
 
@@ -23,9 +24,12 @@ base_url = 'http://biggim.ncats.io/api'
 # map of bto -> uberon -> bg terms
 uberon_bto_map = json.loads(open ('bto_uberon_bg.json').read())
 
+# map of columns to metadata objects
+meta_columns = json.loads(open ('bg_column_map.json').read())
+
 def id2term(var, key, return_key, json_blob):
     """
-    check json map of uberbon, bto an bg terms for id
+    check json map for value
     :param var: identifier
     :param key: source of identifier
     :param return_key: key to return in matched object
@@ -279,11 +283,54 @@ class GetInteractionsQuery(Resource):
             }
         return query_status
 
+    def search_things(self, key, value, data):
+        return [item for item in data if item[key] == value]
+
     def pandas2json(self, request_uri):
         # use pandas to get csv with request uri and serialize into json for return
         pd_df = pd.read_csv(request_uri[0])
-        raw_json = pd_df.to_json(orient='records')
-        return json.loads(raw_json)
+        out_json = json.loads(pd_df.to_json(orient='records'))
+
+        final_json = list()
+        for record in out_json:
+            pprint(record)
+            new_record = {
+                'Gene1': record['Gene1'],
+                'Gene2': record['Gene2'],
+                'GPID': record['GPID'],
+                'GIANT': [],
+                'GTEx': [],
+                'BioGRID': [],
+                'TCGA': []
+            }
+            sources = {
+                'GIANT': [],
+                'GTEx': [],
+                'BioGRID': [],
+                'TCGA': []
+            }
+            for k, v in record.items():
+                if k in meta_columns.keys():
+                    col = meta_columns[k]
+                    sources[col['source']].append({
+                        col['type']: v,
+                        'cancer_type': col['cancer_type'],
+                        'tissue': col['tissue']
+                    })
+            for sor in list(sources.keys()):
+                for l1, l2 in zip(sources[sor], sources[sor][1:]):
+                    if l1['tissue'] is not None and l2['tissue'] is not None:
+                        if l1['tissue']['bg_label'] == l2['tissue']['bg_label']:
+                            l1.update(l2)
+                            new_record[sor].append(l1)
+                    if l1['cancer_type'] is not None and l2['cancer_type'] is not None:
+                        if l1['cancer_type'] == l2['cancer_type']:
+                            l1.update(l2)
+                            new_record[sor].append(l1)
+            final_json.append(new_record)
+
+        return final_json
+
 
 if __name__ == '__main__':
     app.run(debug=True)
