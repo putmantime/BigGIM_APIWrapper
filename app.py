@@ -290,10 +290,10 @@ class GetInteractionsQuery(Resource):
         # use pandas to get csv with request uri and serialize into json for return
         pd_df = pd.read_csv(request_uri[0])
         out_json = json.loads(pd_df.to_json(orient='records'))
-
         final_json = list()
+
+        # begin deconstruction of multi concept csv headers into json metadata fields
         for record in out_json:
-            pprint(record)
             new_record = {
                 'Gene1': record['Gene1'],
                 'Gene2': record['Gene2'],
@@ -303,6 +303,8 @@ class GetInteractionsQuery(Resource):
                 'BioGRID': [],
                 'TCGA': []
             }
+
+            # temporary container for source objects before merging
             sources = {
                 'GIANT': [],
                 'GTEx': [],
@@ -310,6 +312,8 @@ class GetInteractionsQuery(Resource):
                 'TCGA': []
             }
             for k, v in record.items():
+                # check for key name in meta_columns(deconstructed metadata fields from
+                # csv headers with uberon, bto terms mapped.  Code in Columns2JsonFields.ipynb
                 if k in meta_columns.keys():
                     col = meta_columns[k]
                     sources[col['source']].append({
@@ -317,6 +321,7 @@ class GetInteractionsQuery(Resource):
                         'cancer_type': col['cancer_type'],
                         'tissue': col['tissue']
                     })
+            # combined results on source and tissue
             for sor in list(sources.keys()):
                 for l1, l2 in zip(sources[sor], sources[sor][1:]):
                     if l1['tissue'] is not None and l2['tissue'] is not None:
