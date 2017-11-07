@@ -318,6 +318,9 @@ class GetInteractionsQuery(Resource):
                     if int_source == 'BioGRID' and isinstance(v, str):
                         v = v.split(',')
                         v = ",".join(set(v))
+                        col[col['type']] = v
+                        new_col = self.remove_kv_pair(col, 'type')
+                        sources[int_source][col['type']].append(new_col)
                     # group by tissue
                     if col['tissue'] is not None:
                         col[col['type']] = v
