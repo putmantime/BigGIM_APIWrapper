@@ -5,6 +5,7 @@ import time
 import json
 import pandas as pd
 from pprint import pprint
+from collections import defaultdict
 
 app = Flask(__name__)
 
@@ -283,57 +284,51 @@ class GetInteractionsQuery(Resource):
             }
         return query_status
 
-    def search_things(self, key, value, data):
-        return [item for item in data if item[key] == value]
+    def remove_kv_pair(self, obj, key):
+        obj1 = obj.copy()
+        obj1.pop(key)
+        return obj1
 
     def pandas2json(self, request_uri):
         # use pandas to get csv with request uri and serialize into json for return
         pd_df = pd.read_csv(request_uri[0])
         out_json = json.loads(pd_df.to_json(orient='records'))
         final_json = list()
-
-        # begin deconstruction of multi concept csv headers into json metadata fields
         for record in out_json:
+            d = defaultdict(list)
             new_record = {
                 'Gene1': record['Gene1'],
                 'Gene2': record['Gene2'],
                 'GPID': record['GPID'],
-                'GIANT': [],
-                'GTEx': [],
-                'BioGRID': [],
-                'TCGA': []
+                'interactions': []
             }
-
-            # temporary container for source objects before merging
             sources = {
-                'GIANT': [],
-                'GTEx': [],
-                'BioGRID': [],
-                'TCGA': []
+                'BioGRID': defaultdict(list),
+                'TCGA': defaultdict(list),
+                'GTEx': defaultdict(list),
+                'GIANT': defaultdict(list)
             }
             for k, v in record.items():
-                # check for key name in meta_columns(deconstructed metadata fields from
-                # csv headers with uberon, bto terms mapped.  Code in Columns2JsonFields.ipynb
-                if k in meta_columns.keys():
+                if k in meta_columns.keys() and v is not None:
                     col = meta_columns[k]
-                    sources[col['source']].append({
-                        col['type']: v,
-                        'cancer_type': col['cancer_type'],
-                        'tissue': col['tissue']
-                    })
-            # combined results on source and tissue
-            for sor in list(sources.keys()):
-                for l1, l2 in zip(sources[sor], sources[sor][1:]):
-                    if l1['tissue'] is not None and l2['tissue'] is not None:
-                        if l1['tissue']['bg_label'] == l2['tissue']['bg_label']:
-                            l1.update(l2)
-                            new_record[sor].append(l1)
-                    if l1['cancer_type'] is not None and l2['cancer_type'] is not None:
-                        if l1['cancer_type'] == l2['cancer_type']:
-                            l1.update(l2)
-                            new_record[sor].append(l1)
+                    int_source = col['source']
+                    if int_source == 'BioGRID' and isinstance(v, str):
+                        v = v.split(',')
+                        v = ",".join(set(v))
+                    if col['tissue'] is not None:
+                        col[col['type']] = v
+                        new_col = self.remove_kv_pair(col, 'type')
+                        sources[int_source][col['tissue']['bg_label']].append(new_col)
+                    if col['cancer_type'] is not None:
+                        col[col['type']] = v
+                        new_col = self.remove_kv_pair(col, 'type')
+                        sources[int_source][col['cancer_type']].append(new_col)
+            for skey in sources.keys():
+                for k, v in sources[skey].items():
+                    for vobj in v[1:]:
+                        v[0].update(vobj)
+                    new_record['interactions'].append(v[0])
             final_json.append(new_record)
-
         return final_json
 
 
