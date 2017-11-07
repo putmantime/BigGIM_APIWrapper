@@ -295,34 +295,40 @@ class GetInteractionsQuery(Resource):
         out_json = json.loads(pd_df.to_json(orient='records'))
         final_json = list()
         for record in out_json:
-            d = defaultdict(list)
             new_record = {
                 'Gene1': record['Gene1'],
                 'Gene2': record['Gene2'],
                 'GPID': record['GPID'],
                 'interactions': []
             }
+            # use defaultdict to sort by unique tissues
             sources = {
                 'BioGRID': defaultdict(list),
                 'TCGA': defaultdict(list),
                 'GTEx': defaultdict(list),
                 'GIANT': defaultdict(list)
             }
+
             for k, v in record.items():
+                # map columns to metadata json blobs
                 if k in meta_columns.keys() and v is not None:
                     col = meta_columns[k]
                     int_source = col['source']
+                    # remove redundent biogrid values
                     if int_source == 'BioGRID' and isinstance(v, str):
                         v = v.split(',')
                         v = ",".join(set(v))
+                    # group by tissue
                     if col['tissue'] is not None:
                         col[col['type']] = v
                         new_col = self.remove_kv_pair(col, 'type')
                         sources[int_source][col['tissue']['bg_label']].append(new_col)
+                    # group by cancer type
                     if col['cancer_type'] is not None:
                         col[col['type']] = v
                         new_col = self.remove_kv_pair(col, 'type')
                         sources[int_source][col['cancer_type']].append(new_col)
+            # join interaction params with same tissue e.g. correlation and pvalue
             for skey in sources.keys():
                 for k, v in sources[skey].items():
                     for vobj in v[1:]:
